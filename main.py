@@ -2,7 +2,7 @@ import os
 from typing import Annotated
 import urllib.parse
 from sqlmodel import Field, SQLModel, create_engine, Session, select
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 
 def get_session():
     with Session(engine) as session:
@@ -51,6 +51,27 @@ def products(session: SessionDep):
     products = session.exec(select(Product)).all()
     return products
 
+@app.post('/products')
+def create_product(session: SessionDep, name: str, price: int):
+    session.add(Product(name=name,price=price))
+    session.commit()
+
+@app.put('/products')
+def update_product(session: SessionDep, name: str, price: int):
+    product = session.exec(select(Product).where(Product.name == name)).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.price = price
+    session.add(product)
+    session.commit()
+
+
+@app.delete('/products')
+def delete_product(session: SessionDep, name: str):
+    query = select(Product).where(Product.name == name)
+    result = session.exec(query).one()
+    session.delete(result)
+    session.commit()
 
 
 
